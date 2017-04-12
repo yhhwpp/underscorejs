@@ -211,6 +211,29 @@
     _.findWhere = function (obj, attrs) { //寻找第一个有指定 key-value 键值对的对象
         return _.find(obj, _.matcher(attrs));
     };
+    _.max = function (obj, iteratee, context) {
+        var result = -Infinity, lastComputed = -Infinity,
+            value, computed;
+        if (iteratee == null && obj != null) {//  如果没有有 iteratee 参数如果是数组，则寻找数组中最大元素 ,如果是对象，则寻找最大 value 值
+            obj = isArrayLike(obj) ? obj : _.values(obj);
+            for (var i = 0, length = obj.length; i < length; i++) {
+                value = obj[i];
+                if (value > result) {
+                    result = value;
+                }
+            }
+        } else { // 寻找元素经过迭代后的最值
+            iteratee = cb(iteratee, context);  //lastComputed 保存计算过程中出现的最值
+            _.each(obj, function (value, index, list) {
+                computed = iteratee(value, index, list);  //经过迭代函数后的值
+                if (computed > lastComputed || computed == -Infinity && result === -Infinity) { // && 的优先级高于 ||
+                    result = value;
+                    lastComputed = computed;
+                }
+            });
+        }
+        return result;
+    };
 
 
 
