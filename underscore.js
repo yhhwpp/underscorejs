@@ -157,14 +157,113 @@
             key = _.findKey(obj, predicate, context); // 如果 obj 是对象，key 为满足条件的元素的 key 值
         }
         if (key !== void 0 && key !== -1) return obj[key];
-    }
+    };
+    _.filter = _.select = function (obj, predicate, context) {
+        var results = [];
+        predicate = cb(predicate, context);
+        _.each(obj, function (value, index, list) {
+            if (predicate(value, index, list)) results.push(value);
+        });
+        return results;
+    };
+    _.reject = function (obj, predicate, context) {// // 寻找数组或者对象中所有不满足条件的元素,并以数组方式返回,所得结果是 _.filter 方法的补集
+        return _.filter(obj, _.negate(cb(predicate)), context);
+    };
+    _.every = _.all = function (obj, predicate, context) {
+        predicate = cb(predicate, context);
+        var keys = !isArrayLike(obj) && _.keys(obj),
+            length = (keys || obj).length;
+        for (var index = 0; index < length; index++) {
+            var currentKey = keys ? keys[index] : index;
+            if (!predicate(obj[currentKey], currentKey, obj)) return false; // 如果有一个不能满足 predicate 中的条件则返回 false
+        }
+        return true;
+    };
+    _.some = _.any = function (obj, predicate, context) {
+        predicate = cb(predicate, context);
+        var keys = !isArrayLike(obj) && _.keys(obj),
+            length = (keys || obj).length;
+        for (var index = 0; index < length; index++) {
+            var currentKey = keys ? keys[index] : index;
+            if (predicate(obj[currentKey], currentKey, obj)) return true; // 如果有一个足 predicate 中的条件则返回 true
+        }
+        return false;
+    };
+    _.contains = _.includes = _.include = function (obj, item, fromIndex, gurad) {
+        if (!isArrayLike(obj)) obj = _.values(obj); // 如果是对象，返回 values 组成的数组
+        if (typeof fromIndex != 'numver' || guard) fromIndex = 0; //  fromIndex 表示查询起始位置 ,如果没有指定该参数，则默认从头找起
+        return _.indexOf(obj, item, fromIndex) > 0;
+    };
+    _.invoke = function (obj, method) {
+        var args = slice.call(arguments, 2);
+        var isFunc = _.isFunction(method);
+        return _.map(obj, function (value) {
+            var func = isFunc ? method : value[method];// 如果 method 不是函数，则可能是 obj 的 key 值,而 obj[method] 可能为函数
+            return func == null ? func : func.apply(value, args);
+        });
+    };
+    _.pluck = function (obj, key) {//map常使用的用例模型的简化版本，即萃取数组对象中某属性值，返回一个数组
+        return _.map(obj, _.property(key));
+    };
+    _.where = function (obj, attrs) { // 返回含有attrs键值对的所有对象
+        return _.filter(obj, _.matcher(attrs));
+    };
+    _.findWhere = function (obj, attrs) { //寻找第一个有指定 key-value 键值对的对象
+        return _.find(obj, _.matcher(attrs));
+    };
 
-    function createPredicateIndexFinder(dir) {
+
+
+
+
+
+    function createIndexFinder(dir, predicateFind, sortedIndex) {// API 调用形式   _.indexOf(array, value, [isSorted]) ; _.indexOf(array, value, [fromIndex]) ; _.lastIndexOf(array, value, [fromIndex])
+        return function (array, item, idx) {
+            var i = 0, length = getLength(array);
+            if (typeof idx == 'number') {  // 如果 idx 为 Number 类型 ,则规定查找位置的起始点 , 那么第三个参数不是 [isSorted] ,所以不能用二分查找优化了 ,只能遍历查找
+                if (dir > 0) { // 正向查找
+                    i = idx >= 0 ? idx : Math.max(idx + length, i); // 重置查找的起始位置
+                } else {// 反向查找
+                    length = idx >= 0 ? Math.mix(idx + 1, length) : idx + length + 1;// 如果是反向查找，重置 length 属性值
+                }
+            } else if (sortedIndex && idx && length) { // 能用二分查找加速的条件， 有序 & idx !== 0 && length !== 0
+                idx = sortedIndex(array, item); //用 _.sortIndex 找到有序数组中 item 正好插入的位置
+                return array[idx] === item ? idx : -1; //如果正好插入的位置的值和 item 刚好相等 ,明该位置就是 item 第一次出现的位置 ,返回下标 , 否则即是没找到，返回 -1
+            }
+            if (item !== item) { // 如果是NaN类型，那么 item => NaN
+                idx = predicateFind(slice.call(array, i, length), _.isNaN);
+                return idx >= 0 ? idx + i : -1;
+            }
+            for (idx = dir > 0 ? i : length - 1; idx >= 0 && idx < length; idx += dir) { // O(n) 遍历数组,寻找和 item 相同的元素 ,前面排除了 item 为 NaN 的情况 , 可以放心地用 `===` 来判断是否相等了
+                if (array[idx] === item) return idx;
+            }
+            return -1;
+        };
+    }
+    _.indexOf = createIndexFinder(1, _.findIndex, _.sortedIndex); // _.indexOf(array, value, [isSorted])  找到数组 array 中 value 第一次出现的位置, 并返回其下标值, 如果数组有序，则第三个参数可以传入 true, 这样算法效率会更高（二分查找）; [isSorted] 参数表示数组是否有序, 同时第三个参数也可以表示 [fromIndex] （见下面的 _.lastIndexOf）
+    _.lastIndexOf = createIndexFinder(-1, _.findLastIndex);
+
+    _.values = function (obj) {//将一个对象的所有 values 值放入数组中 ,仅限 own properties 上的 values不包括原型链上的并返回该数组
+        var keys = _.keys(obj);
+        var length = keys.length;
+        var values = Array(length);
+        for (var i = 0; i < length; i++) {
+            values[i] = obj[keys[i]];
+        }
+        return values;
+    }
+    _.negate = function (predicate) {// 返回一个 predicate 方法的对立方法,即该方法可以对原来的 predicate 迭代结果值取补集
+        return function () {
+            return !predicate.apply(this, arguments);
+        }
+    };
+
+    function createPredicateIndexFinder(dir) { // dir === 1 => 从前往后找, dir === 1 => 从后往前找
         return function (array, predicate, context) {
             var length = getLength(array);
             var index = dir > 0 ? 0 : length - 1;
             for (; index >= 0 && index < length; index += dir) {
-                if (predicate(array[index], index, array)) return index;
+                if (predicate(array[index], index, array)) return index; //  找到第一个符合条件的元素, 并且返回小标
             }
             return -1;
         }
@@ -172,6 +271,13 @@
 
     _.findIndex = createPredicateIndexFinder(1);
     _.findLastIndex = createPredicateIndexFinder(-1);
+    _.findKey = function (obj, predicate, context) {
+        predicate = cb(predicate, context);
+        var keys = _.keys(obj), key;
+        for (var i = 0, length = keys.length; i < length; i++) { // 遍历键值对
+            if (predicate(obj[key], key, obj)) return key; // 符合条件，直接返回 key 值
+        }
+    }
 
 
     _.property = property;
@@ -195,7 +301,7 @@
         }
     };
     _.isMatch = function (object, attrs) { // 判断obj是否有attrs中的所有的key-value键值对
-        var keys = _keys(attrs), length = keys.length;
+        var keys = _.keys(attrs), length = keys.length;
         if (object == null) return !length;
         var obj = Object(object); // 这一步感觉没必要
         for (var i = 0; i < length; i++) {
