@@ -91,7 +91,7 @@
         }
     };
 
-    var MAX_ARRAY_INDEX = Math.pow(2, 52) - 1;// JavaScript做大的数值
+    var MAX_ARRAY_INDEX = Math.pow(2, 53) - 1;// JavaScript做大的数值
     var getLength = property('length'); // 用来获取 array 以及 arrayLike 元素的 length 属性值
     var isArrayLike = function (collection) {//包括数组、arguments、HTML Collection 以及 NodeList,字符串，函数，以及具有键{length}的对象
         var length = getLength(collection);
@@ -101,8 +101,8 @@
 
 
     // 扩展方法
-    _.each = _.forEach = function (obj, iteratee, context) {
-        iteratee = optimizeCb(iteratee, context);
+    _.each = _.forEach = function (obj, iteratee, context) { // 与 ES5 Array.prototype.forEach一直
+        iteratee = optimizeCb(iteratee, context); // 根据 context 确定不同的迭代函数
         var i, length;
         if (isArrayLike(obj)) {
             for (i = 0, length = obj.length; i < length; i++) {
@@ -116,6 +116,63 @@
         }
         return obj;
     };
+    _.map = _.collect = function (obj, iteratee, context) {
+        iteratee = cb(iteratee, context); // 根据 context 确定不同的迭代函数
+        var keys = !isArrayLike(obj) && _.keys(obj), // 如果传参是对象，则获取它的 keys 值数组（短路表达式）
+            length = (keys || obj).length, // 如果 obj 为对象，则 length 为 key.length， 如果 obj 为数组，则 length 为 obj.length
+            results = Array(length);
+        for (var index = 0; index < length; index++) {
+            var currentKey = keys ? keys[index] : index;
+            results[index] = iteratee(obj[currentKey], currentKey, obj);
+        }
+        return results;
+    }
+    function createReduce(dir) { //dir === 1 -> _.reduce, dir === -1 -> _.reduceRight
+        function iterator(obj, iteratee, memo, keys, index, length) {
+            for (; index >= 0 && index < length; index += dir) {
+                var currentKey = keys ? keys[index] : index;
+                memo = iteratee(memo, obj[currentKey], currentKey, obj); // 迭代，返回值供下次迭代调用 
+            }
+            return memo; // 每次迭代返回值，供下次迭代调用
+        }
+        return function (obj, iteratee, memo, context) {
+            iteratee = optimizeCb(iteratee, context, 4); // 可传入的 4 个参数
+            var keys = !isArrayLike(obj) && _.keys(obj),
+                length = (keys || obj).length,
+                index = dir > 0 ? 0 : length - 1;
+            if (arguments.length < 3) {  // 如果没有指定初始值 ,则把第一个元素指定为初始值
+                memo = obj[keys ? keys[index] : index];
+                index += dir; //  确定index的初始值
+            }
+            return iterator(obj, iteratee, memo, keys, index, length);
+        }
+    }
+    _.reduce = _.foldl = _.inject = createReduce(1); // 与 ES5 Array.prototype.reduce 的方式类似
+    _.reduceRight = _.foldr = createReduce(-1);// 与 ES5 Array.prototype.reduceRight 的方式类似
+    _.find = _.detect = function (obj, predicate, context) { //  寻找数组或者对象中第一个满足条件（predicate 函数返回 true）的元素
+        var key;
+        if (isArrayLike(obj)) {
+            key = _.findIndex(obj, predicate, context);//  如果 obj 是数组，key 为满足条件的下标
+        } else {
+            key = _.findKey(obj, predicate, context); // 如果 obj 是对象，key 为满足条件的元素的 key 值
+        }
+        if (key !== void 0 && key !== -1) return obj[key];
+    }
+
+    function createPredicateIndexFinder(dir) {
+        return function (array, predicate, context) {
+            var length = getLength(array);
+            var index = dir > 0 ? 0 : length - 1;
+            for (; index >= 0 && index < length; index += dir) {
+                if (predicate(array[index], index, array)) return index;
+            }
+            return -1;
+        }
+    }
+
+    _.findIndex = createPredicateIndexFinder(1);
+    _.findLastIndex = createPredicateIndexFinder(-1);
+
 
     _.property = property;
 
