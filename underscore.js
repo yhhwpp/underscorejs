@@ -234,6 +234,76 @@
         }
         return result;
     };
+    _.min = function (obj, iteratee, context) { //逻辑类似 _.max
+        var result = Infinity, lastComputed = Infinity,
+            value, computed;
+        if (iteratee == null && obj != null) {
+            obj = isArrayLike(obj) ? obj : _.values(obj);
+            for (var i = 0, length = obj.length; i < length; i++) {
+                value = obj[i];
+                if (value < result) {
+                    result = value;
+                }
+            }
+        } else {
+            iteratee = cb(iteratee, context);
+            _.each(obj, function (value, index, list) {
+                computed = iteratee(value, index, list);
+                if (computed < lastComputed || computed == Infinity && result === Infinity) {
+                    result = value;
+                    lastComputed = computed;
+                }
+            });
+        }
+        return result;
+    };
+    _.shuffle = function (obj) {// 将数组乱序;  如果是对象，则返回一个数组，数组由对象 value 值构成 ; Fisher-Yates shuffle 算法, 最优的洗牌算法，复杂度 O(n), 乱序不要用 sort + Math.random()，复杂度 O(nlogn),而且，并不是真正的乱序;参考 https://github.com/hanzichi/underscore-analysis/issues/15
+        var set = isArrayLike(obj) ? obj : _.values(obj); //  如果是对象，则对 value 值进行乱序
+        var length = set.length;
+        var shuffled = Array(length); // 乱序后返回的数组副本（参数是对象则返回乱序后的 value 数组）
+        for (var index = 0, rand; index < length; index++) {  //遍历数组元素，将其与之前的任意元素交换
+            rand = _.random(0, index);
+            if (rand !== index) shuffled[index] = shuffled[rand];
+            shuffled[rand] = set[index];
+        }
+        return shuffled;
+    };
+    _.sample = function (obj, n, guard) {
+        if (n == null || guard) { //如果没有传N，随机返回一个元素
+            if (!isArrayLike(obj)) obj = _.values(obj);
+            return obj[_.random(obj.length - 1)];
+        }
+        return _.shuffle(obj).slice(0, Math.max(0, n)); // 随机返回 n 个
+    };
+    console.log(0);
+    _.sortBy = function (obj, iteratee, context) {
+        iteratee = cb(iteratee, context);
+        return _.pluck(// 根据指定的 key 返回 values 数组
+            _.map(obj, function (value, index, list) { // 根据指定的 key 返回 values 数组 _.map(obj, function(){}).sort()
+                return {
+                    value: value,
+                    index: index,
+                    criteria: iteratee(value, index, list) // 元素经过迭代函数迭代后的值
+                };
+            }).sort(function (left, right) {
+                var a = left.criteria;
+                var b = right.criteria;
+                if (a !== b) {
+                    if (a > b || a === void 0) return 1;
+                    if (a < b || b === void 0) return -1;
+                }
+                return left.index - right.index;
+            }),'value');
+    };
+
+
+    _.random = function (min, max) { // 生成min - max的随机整数
+        if (max == null) {
+            max = min;
+            min = 0
+        }
+        return min + Math.floor(Math.random() * (max - min + 1));
+    };
 
 
 
