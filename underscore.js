@@ -100,7 +100,9 @@
 
 
 
-    // 扩展方法
+    // Collection Functions
+    // --------------------
+
     _.each = _.forEach = function (obj, iteratee, context) { // 与 ES5 Array.prototype.forEach一直
         iteratee = optimizeCb(iteratee, context); // 根据 context 确定不同的迭代函数
         var i, length;
@@ -275,7 +277,6 @@
         }
         return _.shuffle(obj).slice(0, Math.max(0, n)); // 随机返回 n 个
     };
-    console.log(0);
     _.sortBy = function (obj, iteratee, context) {
         iteratee = cb(iteratee, context);
         return _.pluck(// 根据指定的 key 返回 values 数组
@@ -293,10 +294,77 @@
                     if (a < b || b === void 0) return -1;
                 }
                 return left.index - right.index;
-            }),'value');
+            }), 'value');
+    };
+    var group = function (behavior) { // behavior 是一个函数参数 _.groupBy, _.indexBy 以及 _.countBy 其实都是对数组元素进行分类,分类规则就是 behavior 函数
+        return function (obj, iteratee, context) {
+            var result = {};
+            iteratee = cb(iteratee, context);
+            _.each(obj, function (value, index) {
+                var key = iteratee(value, index, obj); //  经过迭代，获取结果值，存为 key
+                behavior(result, value, key); // 按照不同的规则进行分组操作, 将变量 result 当做参数传入，能在 behavior 中改变该值
+            });
+            return result;
+        };
+    };
+    _.groupy = group(function (result, value, key) { //把一个集合分组为多个集合
+        if (_.has(result, key)) result[key].push(value); else result[key] = [value];
+    });
+    _.indexBy = group(function (result, value, key) { //  key 值必须是独一无二的,不然后面的会覆盖前面的, 其他和 _.groupBy 类似
+        result[key] = value;
+    });
+    _.countBy = group(function (result, value, key) { // 各组中的对象的数量的计数
+        if (_.has(result, key)) result[key]++; else result[key] = 1;
+    });
+    _.toArray = function (obj) {
+        if (!obj) return [];
+        if (_.isArray(obj)) return slice.call(obj); // 如果是数组，则返回副本数组
+        if (isArrayLike(obj)) return _.map(obj, _.identity); // 如果是类数组，则重新构造新的数组
+        return _.values(obj); // 如果是对象，则返回 values 集合
+    };
+    _.size = function (obj) {
+        if (obj == null) return 0;
+        return isArrayLike(obj) ? obj.length : _.keys(obj).length; //类数组，返回ength 属性,如果是对象，返回键值对数量
+    };
+    _.partition = function (obj, predicate, context) {
+        predicate = cb(predicate, context);
+        var pass = [], fail = [];
+        _.each(obj, function (value, key, obj) {
+            (predicate(value, key, obj) ? pass : fail).push(value);
+        });
+        return [pass, fail];
+    };
+
+    // Array Functions
+    // ---------------
+
+    _.first = _.head = _.take = function (array, n, gurad) {
+        if (array == null) return void 0;
+        if (n == null || gurad) return array[0]; // 没指定参数 n，则默认返回第一个元素
+        return _.initial(array, array.length - n); //  如果有参数 n，则返回数组前 n 个元素（组成的数组） 返回前 n 个元素，即剔除后 array.length - n 个元素
+    };
+    _.initial = function (array, n, gurad) {
+        return slice.call(array, 0, Math.max(0, array.length - (n == null || guard ? 1 : n)));
+    };
+    _.last = function (array, n, guard) {
+        if (array == null) return void 0;
+        if (n == null || guard) return array[array.length - 1];
+        return _.rest(array, Math.max(0, array.length - n)); // 剔除前 array.length - n 个元素
+    };
+    _.rest = _.tail = _.drop = function (array, n, gurad) {
+        return slice.call(array, n == null || guard ? 1 : n);
+    };
+    _.compact = function (array) { //去掉数组中所有的假值
+        return _.filter(array, _.identity);
     };
 
 
+
+
+
+    _.isArray = nativeIsArray || function (obj) {//判断是否为数组
+        return toString.call(obj) === '[object Array]'
+    };
     _.random = function (min, max) { // 生成min - max的随机整数
         if (max == null) {
             max = min;
