@@ -357,10 +357,83 @@
     _.compact = function (array) { //去掉数组中所有的假值
         return _.filter(array, _.identity);
     };
+    var flatten = function (input, shallow, strict, startIndex) { // 递归调用数组，将数组展开 ；shallow => 是否只展开一层 ；strict === true，通常和 shallow === true 配合使用； 表示只展开一层，但是不保存非数组元素（即无法展开的基础类型）
+        var output = [], idx = 0;
+        for (var i = startIndex || 0, length = getLength(input); i < length; i++) {
+            var value = input[i];
+            if (isArrayLike(value) && (_.isArray(value) || _.isArgments(value))) {
+                if (!shallow) value = flatten(value, shallow, strict); // 深度递归展开
+                var j = 0, len = value.length; // 此时递归展开到最后一层（没有嵌套的数组了），value 值肯定是一个数组
+                output.length += len; // 感觉没必要
+                while (j < len) {
+                    output[idx++] = value[j++]; // 将 value 数组的元素添加到 output 数组中
+                }
+            } else if (!strict) { // value 不是数组，是基本类型时
+                output[idx++] = value;
+            }
+        }
+        return output;
+    };
+    _.flatten = function (array, shallow) {
+        return flatten(array, shallow, false);
+    };
+    _.without = function (array) { // 删除指定元素之后返回剩余的数组副本
+        return _.difference(array, slice.call(arguments, 1));
+    };
+    _.uniq = _.unique = function (array, isSorted, iteratee, context) { // 数组去重,如果第二个参数 `isSorted` 为 true,则说明事先已经知道数组有序,程序会跑一个更快的算法（一次线性比较，元素和数组前一个元素比较即可）,如果有第三个参数 iteratee，则对数组每个元素迭代, 对迭代之后的结果进行去重
+        if (!_.isBoolean(isSorted)) {  // 没有传入 isSorted 参数  为 _.unique(array, false, undefined, iteratee)
+            context = iteratee;
+            iteratee = isSorted;
+            isSorted = false;
+        }
+        if (iteratee !== null) iteratee = cb(iteratee, context); // 如果有迭代函数  则根据 this 指向二次返回新的迭代函数
+        var result = [];
+        var seen = [];
+        for (var i = 0, length = getLength(array); i < length; i++) {
+            var value = array[i],
+                computed = iteratee ? iteratee(value, i, array) : value; // 如果指定了迭代函数 , 则对数组每一个元素进行迭代 , 迭代函数传入的三个参数通常是 value, index, array 形式
+            if (isSorted) { //如果是有序数组，则当前元素只需跟上一个元素对比即可, 用 seen 变量保存上一个元素
+                if (!i || seen !== computed) result.push(value); //  如果 i === 0，是第一个元素，则直接 push ,否则比较当前元素是否和前一个元素相等
+                seen = computed; // seen 保存当前元素，供下一次对比
+            } else if (iteratee) { 
+                if (!_.contains(seen, computed)) {// 如果 seen[] 中没有 computed 这个元素值
+                    seen.push(computed);
+                    result.push(value);
+                }
+            } else if (!_.contains(result, value)) {
+                result.push(value);  // 如果不用经过迭代函数计算，也就不用 seen[] 变量了
+            }
+        }
+        return result;
+    };
 
 
 
 
+
+
+
+
+    _.each(['Arguments', 'Function', 'String', 'Number', 'Date', 'RegExp', 'Error'], function (name) { // 其他类型判断
+        _['is' + name] = function (obj) {
+            return toString.call(obj) === '[object ' + name + ']';
+        };
+    });
+    _.isBoolean = function (obj) {
+        return obj === true || obj === false || toString.call(obj) === '[object Boolean]';
+    };
+
+    if (!_.isArguments(arguments)) { // 兼容IE9
+        _.isArguments = function (obj) {
+            return _.has(obj, 'callee');
+        };
+    }
+    _.difference = function (array) {
+        var rest = flatten(arguments, true, true, 1); // 将 others 数组展开一层
+        return _.filter(array, function (value) { //  // 遍历 array，过滤
+            return !_.contains(rest, value); // 如果 value 存在在 rest 中，则过滤掉
+        });
+    }
 
     _.isArray = nativeIsArray || function (obj) {//判断是否为数组
         return toString.call(obj) === '[object Array]'
