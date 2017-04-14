@@ -32,9 +32,9 @@
         root._ = _;
     }
     _.VERSION = '1.8.3'; //版本号
-    var optimizeCb = function (func, context, argCout) { //内部方法，根据context以及参数数量，返回一些回调，迭代方法
+    var optimizeCb = function (func, context, argCount) { //内部方法，根据context以及参数数量，返回一些回调，迭代方法
         if (context === void 0) return func; // 这里 void 0 === undefined，因为undefined不是保留字，可以被重写
-        switch (argCout == null ? 3 : argCout) { // 这里switch直接删除也可以，之所以这样写，是因为call比apply快很多,
+        switch (argCount == null ? 3 : argCount) { // 这里switch直接删除也可以，之所以这样写，是因为call比apply快很多,
             case 1: return function (value) {
                 return func.call(context, value);
             };
@@ -52,16 +52,16 @@
             return func.apply(context, arguments);
         }
     };
-    var cb = function (value, context, argCout) { //callback的统一处理，应用于collection的每个元素
+    var cb = function (value, context, argCount) { //callback的统一处理，应用于collection的每个元素
         if (value == null) return _.identity;
-        if (_.isFunction(value)) return optimizeCb(value, context, argCout);
+        if (_.isFunction(value)) return optimizeCb(value, context, argCount);
         if (_.isObject(value)) return _.matcher(value);
         return _.property(value);
     };
     _.iteratee = function (value, context) {
         return cb(value, context, Infinity);
     };
-    var createAssigner = function (keysFunc, undefineOnly) { // 用到的函数 _.extend = createAssigner(_.allKeys); _.extendOwn  = createAssigner(_.keys); _.defaults = createAssigner(_.allKeys, true)
+    var createAssigner = function (keysFunc, undefinedOnly) { // 用到的函数 _.extend = createAssigner(_.allKeys); _.extendOwn  = createAssigner(_.keys); _.defaults = createAssigner(_.allKeys, true)
         return function (obj) {
             var length = arguments.length;
             if (length < 2 || obj == null) return obj;
@@ -71,7 +71,7 @@
                     l = keys.length;
                 for (var i = 0; i < l; i++) {
                     var key = keys[i];
-                    if (!undefineOnly || obj[key] === void 0) obj[key] = source[key]; // _.defaults中有key 的取以首次出现的, 而_.extend 和 _.extendOwn后面对象的键值对直接覆盖前面的
+                    if (!undefinedOnly || obj[key] === void 0) obj[key] = source[key]; // _.defaults中有key 的取以首次出现的, 而_.extend 和 _.extendOwn后面对象的键值对直接覆盖前面的
                 }
             }
             return obj;
@@ -112,7 +112,7 @@
             }
         } else { // 如果是对象，遍历处理 values 值
             var keys = _.keys(obj);
-            for (i = 0, length = obj.length; i < length; i++) {
+            for (i = 0, length = keys.length; i < length; i++) {
                 iteratee(obj[keys[i]], keys[i], obj);
             }
         }
@@ -128,7 +128,7 @@
             results[index] = iteratee(obj[currentKey], currentKey, obj);
         }
         return results;
-    }
+    };
     function createReduce(dir) { //dir === 1 -> _.reduce, dir === -1 -> _.reduceRight
         function iterator(obj, iteratee, memo, keys, index, length) {
             for (; index >= 0 && index < length; index += dir) {
@@ -191,10 +191,10 @@
         }
         return false;
     };
-    _.contains = _.includes = _.include = function (obj, item, fromIndex, gurad) {
+    _.contains = _.includes = _.include = function (obj, item, fromIndex, guard) {
         if (!isArrayLike(obj)) obj = _.values(obj); // 如果是对象，返回 values 组成的数组
-        if (typeof fromIndex != 'numver' || guard) fromIndex = 0; //  fromIndex 表示查询起始位置 ,如果没有指定该参数，则默认从头找起
-        return _.indexOf(obj, item, fromIndex) > 0;
+        if (typeof fromIndex != 'number' || guard) fromIndex = 0; //  fromIndex 表示查询起始位置 ,如果没有指定该参数，则默认从头找起
+        return _.indexOf(obj, item, fromIndex) >= 0;
     };
     _.invoke = function (obj, method) {
         var args = slice.call(arguments, 2);
@@ -251,7 +251,7 @@
             iteratee = cb(iteratee, context);
             _.each(obj, function (value, index, list) {
                 computed = iteratee(value, index, list);
-                if (computed < lastComputed || computed == Infinity && result === Infinity) {
+                if (computed < lastComputed || computed === Infinity && result === Infinity) {
                     result = value;
                     lastComputed = computed;
                 }
@@ -307,7 +307,7 @@
             return result;
         };
     };
-    _.groupy = group(function (result, value, key) { //把一个集合分组为多个集合
+    _.groupBy = group(function (result, value, key) { //把一个集合分组为多个集合
         if (_.has(result, key)) result[key].push(value); else result[key] = [value];
     });
     _.indexBy = group(function (result, value, key) { //  key 值必须是独一无二的,不然后面的会覆盖前面的, 其他和 _.groupBy 类似
@@ -338,12 +338,12 @@
     // Array Functions
     // ---------------
 
-    _.first = _.head = _.take = function (array, n, gurad) {
+    _.first = _.head = _.take = function (array, n, guard) {
         if (array == null) return void 0;
-        if (n == null || gurad) return array[0]; // 没指定参数 n，则默认返回第一个元素
+        if (n == null || guard) return array[0]; // 没指定参数 n，则默认返回第一个元素
         return _.initial(array, array.length - n); //  如果有参数 n，则返回数组前 n 个元素（组成的数组） 返回前 n 个元素，即剔除后 array.length - n 个元素
     };
-    _.initial = function (array, n, gurad) {
+    _.initial = function (array, n, guard) {
         return slice.call(array, 0, Math.max(0, array.length - (n == null || guard ? 1 : n)));
     };
     _.last = function (array, n, guard) {
@@ -351,7 +351,7 @@
         if (n == null || guard) return array[array.length - 1];
         return _.rest(array, Math.max(0, array.length - n)); // 剔除前 array.length - n 个元素
     };
-    _.rest = _.tail = _.drop = function (array, n, gurad) {
+    _.rest = _.tail = _.drop = function (array, n, guard) {
         return slice.call(array, n == null || guard ? 1 : n);
     };
     _.compact = function (array) { //去掉数组中所有的假值
@@ -395,7 +395,7 @@
             if (isSorted) { //如果是有序数组，则当前元素只需跟上一个元素对比即可, 用 seen 变量保存上一个元素
                 if (!i || seen !== computed) result.push(value); //  如果 i === 0，是第一个元素，则直接 push ,否则比较当前元素是否和前一个元素相等
                 seen = computed; // seen 保存当前元素，供下一次对比
-            } else if (iteratee) { 
+            } else if (iteratee) {
                 if (!_.contains(seen, computed)) {// 如果 seen[] 中没有 computed 这个元素值
                     seen.push(computed);
                     result.push(value);
@@ -403,6 +403,39 @@
             } else if (!_.contains(result, value)) {
                 result.push(value);  // 如果不用经过迭代函数计算，也就不用 seen[] 变量了
             }
+        }
+        return result;
+    };
+    _.union = function () { // 返回数组并集
+        return _.uniq(flatten(arguments, true, true));
+    };
+    _.intersection = function (array) { // 返回数组去重后的交集,注意这里参数是第一个数组
+        var result = [];
+        var argsLength = arguments.length;
+        for (var i = 0, length = getLength(array); i < length; i++) {
+            var item = array[i];
+            if (_.contains(result, item)) continue;
+            for (var j = 1; j < argsLength; j++) { // 从第二个数组开始循环
+                if (!_.contains(arguments[j], item)) break; // 判断其他参数数组中是否都有 item 这个元素
+            }
+            if (j === argsLength) result.push(item); // j === argsLength 说明其他参数数组中都有 item 元素
+        }
+        return result;
+    };
+    _.difference = function (array) {
+        var rest = flatten(arguments, true, true, 1); // 将 others 数组展开一层
+        return _.filter(array, function (value) { //  // 遍历 array，过滤
+            return !_.contains(rest, value); // 如果 value 存在在 rest 中，则过滤掉
+        });
+    };
+    _.zip = function () { // 将多个数组中相同位置的元素归类
+        return _.unzip(arguments);
+    };
+    _.unzip = function (array) {
+        var length = array && _.max(array, getLength).length || 0;
+        var result = Array(length);
+        for (var index = 0; index < length; index++) {
+            result[index] = _.pluck(array, index);
         }
         return result;
     };
@@ -428,12 +461,7 @@
             return _.has(obj, 'callee');
         };
     }
-    _.difference = function (array) {
-        var rest = flatten(arguments, true, true, 1); // 将 others 数组展开一层
-        return _.filter(array, function (value) { //  // 遍历 array，过滤
-            return !_.contains(rest, value); // 如果 value 存在在 rest 中，则过滤掉
-        });
-    }
+
 
     _.isArray = nativeIsArray || function (obj) {//判断是否为数组
         return toString.call(obj) === '[object Array]'
