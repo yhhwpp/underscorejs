@@ -305,24 +305,31 @@
                 return left.index - right.index;
             }), 'value');
     };
-    var group = function (behavior) {
+    var group = function (behavior) { // 根据behavior函数决定分类规则
         return function (obj, iteratee, context) {
             var result = {};
             iteratee = cb(iteratee, context);
             _.each(obj, function (value, index) {
-                var key = iteratee(value, index, obj);
+                var key = iteratee(value, index, obj); // key 存储每个迭代项的结果值
                 behavior(result, value, key);
             });
             return result;
         };
     }
-    _.groupBy = group(function (result, value, key) {
+    _.groupBy = group(function (result, value, key) {// 根据 key 值分组 , key 是元素经过迭代函数后的值 或者元素自身的属性值
         if (_.has(result, key)) result[key].push(value);
         else result[key] = [value];
     });
     _.indexBy = group(function (result, value, key) {
         result[key] = value;
     });
+    _.countBy = group(function (result, value, key) {
+        if (_.has(result, key)) result[key++];
+        else result[key] = 1;
+    });
+
+
+
 
     _.random = function (min, max) { // 生成min - max的随机整数
         if (max == null) {
