@@ -1,55 +1,20 @@
-VISUAL STUDIO CODE SETTINGS SYNC 
-Version: 2.6.2
-
-Download Summary
-
 //     Underscore.js 1.8.3
---------------------
 //     http://underscorejs.org
-GITHUB TOKEN: Anonymous
 //     (c) 2009-2015 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
-GITHUB GIST: 9e617b0f897f1b595731d9731509fec3
 //     Underscore may be freely distributed under the MIT license.
-GITHUB GIST TYPE: Secret
-
-
---------------------
-
-Anonymous Gist Cant be edited, extension will always create new one during upload.
-
-If current theme / file icon extension is not installed. Restart will be Required to Apply Theme and File Icon.
 
 (function () {
-
-Files Download.
-
-extensions.json
     var root = this; //将this，赋值给root，客户端为window,服务端为`exports` 
-keybindings.json
     var previousUnderscore = root._; // 缓存全局变量`_`,在`noConflict`方法中有用到，防止与其他库对 `_`的使用冲突
-settings.json
     var ArrayProto = Array.prototype,
-vsicons.settings.json
         ObjProto = Object.prototype,
-
-EXTENSIONS REMOVED :
-
         FuncProto = Function.prototype; //缓存变量，以便压缩
-docthis - Version :0.4.3
     var push = ArrayProto.push,
-guides - Version :0.7.0
         slice = ArrayProto.slice,
-beautify - Version :1.0.2
         toString = ObjProto.toString,
-vscode-eslint - Version :1.2.8
         hasOwnProperty = ObjProto.hasOwnProperty; //缓存变量，提高查询效率，同时利用压缩
     var nativeIsArray = Array.isArray,
-
-
-EXTENSIONS ADDED :
-
         nativeKeys = Object.keys,
-No Extension needs to install.
         nativeBind = FuncProto.bind,
         nativeCreat = Object.create; // ES5 原生方法，如果浏览器支持，则优先使用
     var Ctor = function () {}; //空函数
@@ -186,6 +151,7 @@ No Extension needs to install.
                 memo = obj[keys ? keys[index] : index];
                 index += dir; //  确定index的初始值
             }
+            sy
             return iterator(obj, iteratee, memo, keys, index, length);
         }
     }
@@ -319,7 +285,7 @@ No Extension needs to install.
         }
         return _.shuffle(obj).slice(0, Math.max(0, n)); // 随机返回 n 个
     };
-    console.log(0);
+
     _.sortBy = function (obj, iteratee, context) {
         iteratee = cb(iteratee, context);
         return _.pluck( // 根据指定的 key 返回 values 数组
@@ -339,7 +305,24 @@ No Extension needs to install.
                 return left.index - right.index;
             }), 'value');
     };
-
+    var group = function (behavior) {
+        return function (obj, iteratee, context) {
+            var result = {};
+            iteratee = cb(iteratee, context);
+            _.each(obj, function (value, index) {
+                var key = iteratee(value, index, obj);
+                behavior(result, value, key);
+            });
+            return result;
+        };
+    }
+    _.groupBy = group(function (result, value, key) {
+        if (_.has(result, key)) result[key].push(value);
+        else result[key] = [value];
+    });
+    _.indexBy = group(function (result, value, key) {
+        result[key] = value;
+    });
 
     _.random = function (min, max) { // 生成min - max的随机整数
         if (max == null) {
