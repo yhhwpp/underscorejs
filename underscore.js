@@ -327,6 +327,10 @@
         if (_.has(result, key)) result[key++];
         else result[key] = 1;
     });
+    _.toArray = function(obj){
+        if(!obj) return [];
+        if(_.isArray(obj)) return slice.call(obj);
+    };
 
 
 
