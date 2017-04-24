@@ -439,7 +439,7 @@
         }
         return result;
     }; 
-    _.object = function (list, values) {
+    _.object = function (list, values) { // 将数组转化为对象
         var result = {};
         for (var i = 0, length = getLength(list); i < length; i++) {
             if (values) {
