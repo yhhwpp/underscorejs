@@ -316,7 +316,7 @@
             return result;
         };
     }
-    _.groupBy = group(function (result, value, key) {// 根据 key 值分组 , key 是元素经过迭代函数后的值 或者元素自身的属性值
+    _.groupBy = group(function (result, value, key) { // 根据 key 值分组 , key 是元素经过迭代函数后的值 或者元素自身的属性值
         if (_.has(result, key)) result[key].push(value);
         else result[key] = [value];
     });
@@ -327,9 +327,31 @@
         if (_.has(result, key)) result[key++];
         else result[key] = 1;
     });
-    _.toArray = function(obj){
-        if(!obj) return [];
-        if(_.isArray(obj)) return slice.call(obj);
+    _.toArray = function (obj) {
+        if (!obj) return [];
+        if (_.isArray(obj)) return slice.call(obj);
+        if (isArrayLike(obj)) return _.map(obj, _.identity);
+        return _.values(obj);
+    };
+    _.size = function(obj){
+        if(obj == null) return 0;
+        return isArrayLike(obj) ? obj.length : _.keys(obj).length;
+    };
+    _.partition = function(obj, predicate, context){
+        predicate = cb(predicate, context);
+        var pass = [], fail = [];
+        _.each(obj, function(value, key, obj){
+            (predicate(value, key, obj) ? pass : fail).push(value);
+        });
+        return [pass, fail];
+    };
+
+
+    // Array Functions
+    _.first = _.head = _.take = function(array, n, guard){
+        if(array == null) return void 0;
+        if(n == null || guard) return array[0];
+        return _.initial(array, array.length - n);
     };
 
 
