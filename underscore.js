@@ -465,8 +465,108 @@
         return result;
     };
 
+    function createPredicateIndexFinder(dir) { // dir === 1 => 从前往后找, dir === 1 => 从后往前找
+        return function (array, predicate, context) {
+            var length = getLength(array);
+            var index = dir > 0 ? 0 : length - 1;
+            for (; index >= 0 && index < length; index += dir) {
+                if (predicate(array[index], index, array)) return index; //  找到第一个符合条件的元素, 并且返回小标
+            }
+            return -1;
+        }
+    }
+
+    _.findIndex = createPredicateIndexFinder(1);
+    _.findLastIndex = createPredicateIndexFinder(-1);
+
+    _.sortedIndex = function (array, obj, iteratee, context) { // 通过二分查找，将一个元素插入已排序的数组,  返回该插入的位置下标
+        iteratee = cb(iteratee, context, 1);
+        var value = iteratee(obj);
+        var low = 0,
+            high = getLength(array);
+        while (low < high) {
+            var mid = Math.floor((low + high) / 2);
+            if (iteratee(array[mid]) < value) low = mid + 1;
+            else high = mid;
+        }
+        return low;
+    }
+
+    function createIndexFinder(dir, predicateFind, sortedIndex) { // API 调用形式   _.indexOf(array, value, [isSorted]) ; _.indexOf(array, value, [fromIndex]) ; _.lastIndexOf(array, value, [fromIndex])
+        return function (array, item, idx) {
+            var i = 0,
+                length = getLength(array);
+            if (typeof idx == 'number') { // 如果 idx 为 Number 类型 ,则规定查找位置的起始点 , 那么第三个参数不是 [isSorted] ,所以不能用二分查找优化了 ,只能遍历查找
+                if (dir > 0) { // 正向查找
+                    i = idx >= 0 ? idx : Math.max(idx + length, i); // 重置查找的起始位置
+                } else { // 反向查找
+                    length = idx >= 0 ? Math.mix(idx + 1, length) : idx + length + 1; // 如果是反向查找，重置 length 属性值
+                }
+            } else if (sortedIndex && idx && length) { // 能用二分查找加速的条件， 有序 & idx !== 0 && length !== 0
+                idx = sortedIndex(array, item); //用 _.sortIndex 找到有序数组中 item 正好插入的位置
+                return array[idx] === item ? idx : -1; //如果正好插入的位置的值和 item 刚好相等 ,明该位置就是 item 第一次出现的位置 ,返回下标 , 否则即是没找到，返回 -1
+            }
+            if (item !== item) { // 如果是NaN类型，那么 item => NaN
+                idx = predicateFind(slice.call(array, i, length), _.isNaN);
+                return idx >= 0 ? idx + i : -1;
+            }
+            for (idx = dir > 0 ? i : length - 1; idx >= 0 && idx < length; idx += dir) { // O(n) 遍历数组,寻找和 item 相同的元素 ,前面排除了 item 为 NaN 的情况 , 可以放心地用 `===` 来判断是否相等了
+                if (array[idx] === item) return idx;
+            }
+            return -1;
+        };
+    }
+    _.indexOf = createIndexFinder(1, _.findIndex, _.sortedIndex); // _.indexOf(array, value, [isSorted])  找到数组 array 中 value 第一次出现的位置, 并返回其下标值, 如果数组有序，则第三个参数可以传入 true, 这样算法效率会更高（二分查找）; [isSorted] 参数表示数组是否有序, 同时第三个参数也可以表示 [fromIndex] （见下面的 _.lastIndexOf）
+    _.lastIndexOf = createIndexFinder(-1, _.findLastIndex);
+
+    _.range = function (start, stop, step) {
+        if (stop == null) {
+            stop = start || 0;
+            start = 0;
+        }
+        step = step || 1;
+        var length = Math.max(Math.ceil((stop - start) / step), 0);
+        var range = Array(length);
+        for (idx = 0; idx < length; idx++, start += step) {
+            range[idx] = start
+        }
+        return range;
+    }
 
 
+    // Function (ahem) Functions
+
+    var executeBound = function (sourceFunc, boundFunc, context, callingContext, args) {
+        if (!(callingContext instanceof boundFunc)) return sourceFunc.apply(context, args);
+        var self = baseCreate(sourceFunc.prototype);
+        var result = sourceFunc.apply(self, args);
+        if (_.isObject(result)) return result; //如果构造函数返回了对象, 则 new 的结果是这个对象, 返回这个对象
+        return self;
+    };
+
+    _.bind = function (func, context) {
+        if (nativeBind && func.bind === nativeBind) return nativeBind.apply(func, slice.call(arguments, 1));
+        if (!_.isFunction(func)) throw new TypeError('Bind must be called on a function');
+        var args = slice.call(arguments, 2);
+        var bound = function () {
+            return executeBound(func, bound, context, this, args.concat(slice.call(arguments)));
+        }
+        return bound;
+    };
+    _.partial = function (func) {
+        var boundArgs = slice(arguments, 1);
+        var bound = function () {
+            var position = 0,
+                length = boundArgs.length;
+            var args = Array(length);
+            for (var i = 0; i < length; i++) {
+                args[i] = boundArgs[i] === _ ? arguments[position++] : boundArgs[i];
+            }
+            while (position < arguments.length) args.push(arguments[postion++]);
+            return executeBound(func, bound, this, this, args)
+        };
+        return bound
+    };
 
 
 
@@ -504,32 +604,7 @@
 
 
 
-    function createIndexFinder(dir, predicateFind, sortedIndex) { // API 调用形式   _.indexOf(array, value, [isSorted]) ; _.indexOf(array, value, [fromIndex]) ; _.lastIndexOf(array, value, [fromIndex])
-        return function (array, item, idx) {
-            var i = 0,
-                length = getLength(array);
-            if (typeof idx == 'number') { // 如果 idx 为 Number 类型 ,则规定查找位置的起始点 , 那么第三个参数不是 [isSorted] ,所以不能用二分查找优化了 ,只能遍历查找
-                if (dir > 0) { // 正向查找
-                    i = idx >= 0 ? idx : Math.max(idx + length, i); // 重置查找的起始位置
-                } else { // 反向查找
-                    length = idx >= 0 ? Math.mix(idx + 1, length) : idx + length + 1; // 如果是反向查找，重置 length 属性值
-                }
-            } else if (sortedIndex && idx && length) { // 能用二分查找加速的条件， 有序 & idx !== 0 && length !== 0
-                idx = sortedIndex(array, item); //用 _.sortIndex 找到有序数组中 item 正好插入的位置
-                return array[idx] === item ? idx : -1; //如果正好插入的位置的值和 item 刚好相等 ,明该位置就是 item 第一次出现的位置 ,返回下标 , 否则即是没找到，返回 -1
-            }
-            if (item !== item) { // 如果是NaN类型，那么 item => NaN
-                idx = predicateFind(slice.call(array, i, length), _.isNaN);
-                return idx >= 0 ? idx + i : -1;
-            }
-            for (idx = dir > 0 ? i : length - 1; idx >= 0 && idx < length; idx += dir) { // O(n) 遍历数组,寻找和 item 相同的元素 ,前面排除了 item 为 NaN 的情况 , 可以放心地用 `===` 来判断是否相等了
-                if (array[idx] === item) return idx;
-            }
-            return -1;
-        };
-    }
-    _.indexOf = createIndexFinder(1, _.findIndex, _.sortedIndex); // _.indexOf(array, value, [isSorted])  找到数组 array 中 value 第一次出现的位置, 并返回其下标值, 如果数组有序，则第三个参数可以传入 true, 这样算法效率会更高（二分查找）; [isSorted] 参数表示数组是否有序, 同时第三个参数也可以表示 [fromIndex] （见下面的 _.lastIndexOf）
-    _.lastIndexOf = createIndexFinder(-1, _.findLastIndex);
+
 
     _.values = function (obj) { //将一个对象的所有 values 值放入数组中 ,仅限 own properties 上的 values不包括原型链上的并返回该数组
         var keys = _.keys(obj);
@@ -546,19 +621,7 @@
         }
     };
 
-    function createPredicateIndexFinder(dir) { // dir === 1 => 从前往后找, dir === 1 => 从后往前找
-        return function (array, predicate, context) {
-            var length = getLength(array);
-            var index = dir > 0 ? 0 : length - 1;
-            for (; index >= 0 && index < length; index += dir) {
-                if (predicate(array[index], index, array)) return index; //  找到第一个符合条件的元素, 并且返回小标
-            }
-            return -1;
-        }
-    }
 
-    _.findIndex = createPredicateIndexFinder(1);
-    _.findLastIndex = createPredicateIndexFinder(-1);
     _.findKey = function (obj, predicate, context) {
         predicate = cb(predicate, context);
         var keys = _.keys(obj),
