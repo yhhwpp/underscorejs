@@ -594,7 +594,7 @@
         }, wait);
     };
     _.defer = _.partial(_.delay, _, 1); // 延迟调用function， 类似于setTimeout 0
-    _.throttle = function (func, wait, options) {
+    _.throttle = function (func, wait, options) { // 函数节流
         var context, args, result;
         var timeout = null;
         var previous = 0;
@@ -625,7 +625,51 @@
             return result;
         };
     };
-
+    _.debounce = function (func, wait, immediate) { // 函数去抖（连续事件触发结束后只触发一次）
+        var timeout, args, context, timestamp, result;
+        var later = function () {
+            var last = _.now() - timestamp;
+            if (last < wait && last >= 0) {
+                timeout = setTimeout(later, wait - last);
+            } else {
+                timeout = null;
+                if (!immediate) {
+                    result = func.apply(context, args);
+                    if (!timeout) context = args = null;
+                }
+            }
+        };
+        return function () {
+            context = this;
+            args = arguments;
+            timestamp = _.now();
+            var callNow = immediate && !timeout;
+            if (!timeout) timeout = setTimeout(later, wait);
+            if (callNow) {
+                result = func.apply(context, args);
+                context = args = null;
+            }
+            return result;
+        };
+    }
+    _.wrap = function (func, wrapper) {
+        return _.partial(wrapper, func);
+    };
+    _.negate = function (predicate) { // 返回一个 predicate 方法的对立方法,即该方法可以对原来的 predicate 迭代结果值取补集
+        return function () {
+            return !predicate.apply(this, arguments);
+        }
+    };
+    _.compose = function () {
+        var args = arguments;
+        var start = args.length - 1;
+        return function () {
+            var i = start;
+            var result = args[start].apply(this, arguments);
+            while (i--) result = args[i].call(this, result);
+            return result;
+        };
+    };
 
 
 
@@ -672,11 +716,7 @@
         }
         return values;
     }
-    _.negate = function (predicate) { // 返回一个 predicate 方法的对立方法,即该方法可以对原来的 predicate 迭代结果值取补集
-        return function () {
-            return !predicate.apply(this, arguments);
-        }
-    };
+
 
 
     _.findKey = function (obj, predicate, context) {
@@ -734,8 +774,11 @@
     _.identity = function (value) { // 返回传入的参数
         return value
     }
-    _.extendOwn = _.assign = createAssigner(_.keys); //跟 extend 方法类似，但是只把 own properties 拷贝给第一个参数对象  只继承 own properties 的键值对
-    // 参数个数 >= 1
+    _.extendOwn = _.assign = createAssigner(_.keys); //跟 extend 方法类似，但是只把 own properties 拷贝给第一个参数对象  只继承 own properties 的键值对参数个数 >= 1
+
+    _.now = Date.now || function () {
+        return new Date().getTime();
+    }
 
 
 }.call(this)); // 设置匿名函数的context外层全局变量，浏览器环境为window.
