@@ -315,8 +315,8 @@
             });
             return result;
         };
-    };
-    _.groupBy = group(function (result, value, key) { //把一个集合分组为多个集合
+    }
+    _.groupBy = group(function (result, value, key) { // 根据 key 值分组 , key 是元素经过迭代函数后的值 或者元素自身的属性值
         if (_.has(result, key)) result[key].push(value);
         else result[key] = [value];
     });
